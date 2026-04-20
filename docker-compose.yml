@@ -1,0 +1,33 @@
+
+services:
+
+  lab-target:
+    build:
+      context: ./lab
+      dockerfile: Dockerfile.target
+    container_name: lab-target
+    hostname: lab-target
+    networks:
+      - scannet
+    ports:
+      - "2222:22"
+      - "2323:23"
+      - "8080:80"
+    command: bash -c "sleep 2 && nc -lk 23 & apache2ctl -D FOREGROUND & /usr/sbin/sshd -D"
+
+  scanner:
+    build:
+      context: .
+      dockerfile: scanner/Dockerfile
+    container_name: scanner
+    depends_on:
+      - lab-target
+    networks:
+      - scannet
+    volumes:
+      - ./reports:/app/reports
+    command: tail -f /dev/null
+
+networks:
+  scannet:
+    driver: bridge
