@@ -1,0 +1,186 @@
+# Network Hardening Scanner — Policy Baseline
+# Aligned with: CIS Ubuntu 22.04 Benchmark v1.0 / NIST SP 800-123
+# Each check is scored PASS / WARN / FAIL by the diff engine
+
+checks:
+
+  # -------------------------------------------------------
+  # SSH HARDENING (NET-001 to NET-006)
+  # CIS Ubuntu 22.04 — Section 5.2
+  # -------------------------------------------------------
+
+  - id: NET-001
+    description: SSH must not permit root login
+    category: SSH Hardening
+    severity: FAIL
+    reference: CIS 5.2.8
+    check:
+      type: file_contains
+      path: /etc/ssh/sshd_config
+      expected: "PermitRootLogin no"
+    remediation: >
+      Set 'PermitRootLogin no' in /etc/ssh/sshd_config
+      and restart SSH with: systemctl restart sshd
+
+  - id: NET-002
+    description: SSH must not allow password authentication
+    category: SSH Hardening
+    severity: FAIL
+    reference: CIS 5.2.11
+    check:
+      type: file_contains
+      path: /etc/ssh/sshd_config
+      expected: "PasswordAuthentication no"
+    remediation: >
+      Set 'PasswordAuthentication no' in /etc/ssh/sshd_config.
+      Ensure SSH key-based authentication is configured first.
+
+  - id: NET-003
+    description: SSH MaxAuthTries must be 4 or fewer
+    category: SSH Hardening
+    severity: WARN
+    reference: CIS 5.2.7
+    check:
+      type: file_contains
+      path: /etc/ssh/sshd_config
+      expected: "MaxAuthTries 4"
+    remediation: >
+      Set 'MaxAuthTries 4' in /etc/ssh/sshd_config.
+      This limits brute force attempts before lockout.
+
+  - id: NET-004
+    description: SSH X11 forwarding must be disabled
+    category: SSH Hardening
+    severity: WARN
+    reference: CIS 5.2.6
+    check:
+      type: file_contains
+      path: /etc/ssh/sshd_config
+      expected: "X11Forwarding no"
+    remediation: >
+      Set 'X11Forwarding no' in /etc/ssh/sshd_config.
+      X11 forwarding can be abused to capture keystrokes remotely.
+
+  - id: NET-005
+    description: SSH must use protocol version 2 only
+    category: SSH Hardening
+    severity: FAIL
+    reference: CIS 5.2.1
+    check:
+      type: file_contains
+      path: /etc/ssh/sshd_config
+      expected: "Protocol 2"
+    remediation: >
+      Set 'Protocol 2' in /etc/ssh/sshd_config.
+      SSHv1 has known cryptographic weaknesses and must not be used.
+
+  - id: NET-006
+    description: SSH TCP forwarding must be disabled
+    category: SSH Hardening
+    severity: WARN
+    reference: CIS 5.2.21
+    check:
+      type: file_contains
+      path: /etc/ssh/sshd_config
+      expected: "AllowTcpForwarding no"
+    remediation: >
+      Set 'AllowTcpForwarding no' in /etc/ssh/sshd_config.
+      TCP forwarding can be used to tunnel unauthorised traffic.
+
+  # -------------------------------------------------------
+  # OPEN PORTS (PORT-001 to PORT-005)
+  # CIS Ubuntu 22.04 — Section 3.5
+  # -------------------------------------------------------
+
+  - id: PORT-001
+    description: Telnet port (23) must not be open
+    category: Open Ports
+    severity: FAIL
+    reference: CIS 2.2.18
+    check:
+      type: port_closed
+      port: 23
+      protocol: tcp
+    remediation: >
+      Uninstall Telnet: apt remove telnetd
+      Telnet transmits all data including passwords in plain text.
+
+  - id: PORT-002
+    description: FTP port (21) must not be open
+    category: Open Ports
+    severity: FAIL
+    reference: CIS 2.2.9
+    check:
+      type: port_closed
+      port: 21
+      protocol: tcp
+    remediation: >
+      Uninstall FTP server if present: apt remove vsftpd
+      Use SFTP (SSH file transfer) instead.
+
+  - id: PORT-003
+    description: Rsh port (514) must not be open
+    category: Open Ports
+    severity: FAIL
+    reference: CIS 2.2.16
+    check:
+      type: port_closed
+      port: 514
+      protocol: tcp
+    remediation: >
+      Remove rsh-server: apt remove rsh-server
+      rsh sends credentials in plain text and has no encryption.
+
+  - id: PORT-004
+    description: HTTP port (80) should not be open unless required
+    category: Open Ports
+    severity: WARN
+    reference: NIST SP 800-123 § 4.2
+    check:
+      type: port_closed
+      port: 80
+      protocol: tcp
+    remediation: >
+      If a web server is not required, remove it: apt remove apache2
+      If required, ensure it is hardened and up to date.
+
+  - id: PORT-005
+    description: SMTP port (25) must not be open unless this is a mail server
+    category: Open Ports
+    severity: WARN
+    reference: CIS 2.2.15
+    check:
+      type: port_closed
+      port: 25
+      protocol: tcp
+    remediation: >
+      If no mail server is required: apt remove postfix
+      Open SMTP ports are frequently exploited for spam relay.
+
+  # -------------------------------------------------------
+  # UNNECESSARY SERVICES (SVC-001 to SVC-002)
+  # -------------------------------------------------------
+
+  - id: SVC-001
+    description: Telnet service must not be installed
+    category: Unnecessary Services
+    severity: FAIL
+    reference: CIS 2.2.18
+    check:
+      type: service_stopped
+      service: telnet
+    remediation: >
+      Remove Telnet entirely: apt remove --purge telnetd
+      There is no legitimate use case for Telnet on a modern server.
+
+  - id: SVC-002
+    description: Apache web server should not run unless required
+    category: Unnecessary Services
+    severity: WARN
+    reference: NIST SP 800-123 § 4.2
+    check:
+      type: service_stopped
+      service: apache2
+    remediation: >
+      If Apache is not required: apt remove apache2
+      Unnecessary services expand the attack surface unnecessarily.
